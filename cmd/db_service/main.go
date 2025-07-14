@@ -154,8 +154,9 @@ func main() {
 	sm := http.NewServeMux()
 	sm.HandleFunc("/api/list", handleList)
 
-	s := &server.ServerHTTP{}
-	err := s.Run("9000", sm)
+	s := server.NewServerHTTPClient("9000", sm)
+	err := s.Run()
+
 	if err != nil {
 		fmt.Printf("\"Ошибка запуска сервера\": %v\n", "Ошибка запуска сервера")
 	}

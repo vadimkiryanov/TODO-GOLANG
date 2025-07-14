@@ -10,8 +10,13 @@ import (
 	"github.com/vadimkiryanov/todo-golang/pkg/server"
 )
 
-func handlerList_Get(w http.ResponseWriter, r *http.Request) {
-	resp, err := http.Get("http://localhost:9000/api/list")
+const (
+	BASE_URL  = "http://localhost:9000/api/list"
+	BASE_PORT = "8080"
+)
+
+func handleGet(w http.ResponseWriter, r *http.Request) {
+	resp, err := http.Get(BASE_URL)
 	if err != nil {
 		log.Fatalf("err: %v\n", err)
 		return
@@ -26,11 +31,14 @@ func handlerList_Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Printf("list_todo: %v\n", string(body))
+	// Отправляем JSON-ответ клиенту
+	w.WriteHeader(resp.StatusCode)
+	w.Write(body)
 }
 
 // ~ curl -X POST http://localhost:8080/create -d '{"title":"new title"}'
-func handlerList_Create(w http.ResponseWriter, req *http.Request) {
-	resp, err := http.Post("http://localhost:9000/api/list", "application/json", req.Body)
+func handleCreate(w http.ResponseWriter, req *http.Request) {
+	resp, err := http.Post(BASE_URL, "application/json", req.Body)
 	if err != nil {
 		log.Fatalf("err: %v\n", err)
 		return
@@ -46,7 +54,7 @@ func handlerList_Create(w http.ResponseWriter, req *http.Request) {
 
 	fmt.Printf("list_todo: %v\n", string(body))
 }
-func handlerList_Delete(w http.ResponseWriter, req *http.Request) {
+func handleDelete(w http.ResponseWriter, req *http.Request) {
 	deleteReq, err := http.NewRequest(http.MethodDelete, "http://localhost:9000/api/list", req.Body)
 	if err != nil {
 		log.Fatalf("err: %v\n", err)
@@ -65,8 +73,8 @@ func handlerList_Delete(w http.ResponseWriter, req *http.Request) {
 }
 
 // curl -X PUT http://localhost:8080/done -d '{"id":"3"}'
-func handlerList_Done(w http.ResponseWriter, req *http.Request) {
-	putReq, err := http.NewRequest(http.MethodPut, "http://localhost:9000/api/list", req.Body)
+func handleDone(w http.ResponseWriter, req *http.Request) {
+	putReq, err := http.NewRequest(http.MethodPut, BASE_URL, req.Body)
 	if err != nil {
 		log.Fatalf("err: %v\n", err)
 		return
@@ -87,14 +95,13 @@ func handlerList_Done(w http.ResponseWriter, req *http.Request) {
 func main() {
 	// Мультиплексер
 	sm := http.NewServeMux()
-	sm.HandleFunc("/list", handlerList_Get)
-	sm.HandleFunc("/create", handlerList_Create)
-	sm.HandleFunc("/delete", handlerList_Delete)
-	sm.HandleFunc("/done", handlerList_Done)
+	sm.HandleFunc("/list", handleGet)
+	sm.HandleFunc("/create", handleCreate)
+	sm.HandleFunc("/delete", handleDelete)
+	sm.HandleFunc("/done", handleDone)
 
-	s := new(server.ServerHTTP)
-
-	err := s.Run("8080", sm)
+	s := server.NewServerHTTPClient(BASE_PORT, sm)
+	err := s.Run()
 	if err != nil {
 		fmt.Printf("\"Ошибка запуска сервера\": %v\n", "Ошибка запуска сервера")
 	}
