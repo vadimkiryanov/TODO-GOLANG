@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,18 +10,13 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/vadimkiryanov/todo-golang/pkg/server"
+	"github.com/jackc/pgx/v5"
+	"github.com/spf13/viper"
+	"github.com/vadimkiryanov/db-service/internal/pkg/server"
+	"github.com/vadimkiryanov/db-service/model"
 )
 
-type Item struct {
-	Title string `json:"title"`
-	Done  bool   `json:"done"`
-}
-type ItemId struct {
-	Id string `json:"id"`
-}
-
-var mock_db = map[int]Item{
+var mock_db = map[int]model.TodoItem{
 	1: {Title: "Some title 1", Done: false},
 	2: {Title: "Some title 2", Done: false},
 	3: {Title: "Some title 3", Done: false},
@@ -45,7 +41,7 @@ func create(w http.ResponseWriter, req *http.Request) {
 	}
 	defer req.Body.Close()
 
-	var item Item
+	var item model.TodoItem
 	err = json.Unmarshal(resp, &item)
 	if err != nil {
 		fmt.Println("Ошибка:", err)
@@ -59,7 +55,7 @@ func create(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	mock_db[count_index] = Item{Title: fmt.Sprintf("%v %v", item.Title, count_index)}
+	mock_db[count_index] = model.TodoItem{Title: fmt.Sprintf("%v %v", item.Title, count_index)}
 	count_index = len(mock_db) + 1
 
 	// Проксируем JSON обратно
@@ -82,7 +78,7 @@ func delete_(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 
 	// Get idDelete from req
-	var item ItemId
+	var item model.TodoItemId
 	err = json.Unmarshal(resp, &item)
 	if err != nil {
 		log.Fatalf("err: %v\n", err)
@@ -112,7 +108,7 @@ func put(w http.ResponseWriter, req *http.Request) {
 	}
 	defer req.Body.Close()
 
-	var item ItemId
+	var item model.TodoItemId
 	err = json.Unmarshal(resp, &item)
 	if err != nil {
 		log.Fatalf("err: %v\n", err)
@@ -126,7 +122,7 @@ func put(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	mock_db[itemIdNum] = Item{Title: mock_db[itemIdNum].Title, Done: true}
+	mock_db[itemIdNum] = model.TodoItem{Title: mock_db[itemIdNum].Title, Done: true}
 
 	fmt.Printf("itemIdNum: %v\n", itemIdNum)
 	fmt.Printf("mock_db: %v\n", mock_db)
@@ -151,13 +147,59 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	err := initConfig()
+	if err != nil {
+		fmt.Printf("err: %v\n", err.Error())
+	}
+
+	if err := initDb(); err != nil {
+		log.Fatal("Ошибка подключения:", err)
+	}
+
 	sm := http.NewServeMux()
 	sm.HandleFunc("/api/list", handleList)
 
 	s := server.NewServerHTTPClient("9000", sm)
-	err := s.Run()
+	err = s.Run()
 
 	if err != nil {
 		fmt.Printf("\"Ошибка запуска сервера\": %v\n", "Ошибка запуска сервера")
 	}
+}
+
+func initDb() error {
+	// Строка подключения
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/postgres?sslmode=%s", viper.GetString("db_user"),
+		viper.GetString("db_password"),
+		viper.GetString("db_host"),
+		viper.GetString("db_port"),
+		viper.GetString("sslmode"),
+	)
+
+	ctx := context.Background()
+
+	conn, err := pgx.Connect(ctx, connStr)
+	if err != nil {
+		log.Fatal("Ошибка подключения:", err)
+		return err
+	}
+	defer conn.Close(ctx)
+
+	var greeting string
+	err = conn.QueryRow(ctx, "SELECT 'Hello, PostgreSQL!'").Scan(&greeting)
+	if err != nil {
+		log.Fatal("Ошибка выполнения запроса:", err)
+		return err
+	}
+
+	fmt.Println(greeting)
+
+	return nil
+}
+
+func initConfig() error {
+	viper.AddConfigPath("internal/configs")
+	viper.SetConfigName("config")
+
+	return viper.ReadInConfig()
 }

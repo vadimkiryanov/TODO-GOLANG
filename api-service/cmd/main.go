@@ -7,14 +7,15 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/vadimkiryanov/todo-golang/pkg/server"
+	"github.com/spf13/viper"
+	"github.com/vadimkiryanov/api-service/pkg/server"
 )
 
 const (
-	BASE_URL  = "http://localhost:9000/api/list"
-	BASE_PORT = "8080"
+	BASE_URL = "http://localhost:9000/api/list"
 )
 
+// curl -X GET http://localhost:8080/list -v
 func handleGet(w http.ResponseWriter, r *http.Request) {
 	resp, err := http.Get(BASE_URL)
 	if err != nil {
@@ -93,6 +94,11 @@ func handleDone(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
+	err := initConfig()
+	if err != nil {
+		fmt.Printf("err: %v\n", err.Error())
+	}
+
 	// Мультиплексер
 	sm := http.NewServeMux()
 	sm.HandleFunc("/list", handleGet)
@@ -100,10 +106,17 @@ func main() {
 	sm.HandleFunc("/delete", handleDelete)
 	sm.HandleFunc("/done", handleDone)
 
-	s := server.NewServerHTTPClient(BASE_PORT, sm)
-	err := s.Run()
+	s := server.NewServerHTTPClient(viper.GetString("port"), sm)
+	err = s.Run()
 	if err != nil {
 		fmt.Printf("\"Ошибка запуска сервера\": %v\n", "Ошибка запуска сервера")
 	}
 
+}
+
+func initConfig() error {
+	viper.AddConfigPath("internal/configs")
+	viper.SetConfigName("config")
+
+	return viper.ReadInConfig()
 }

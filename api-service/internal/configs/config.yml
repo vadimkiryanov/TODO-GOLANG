@@ -1,0 +1,4 @@
+# конфигурационные данные
+# go get github.com/spf13/viper
+base_url: "http://localhost:9000/api/list"
+port: "8080"

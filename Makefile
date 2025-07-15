@@ -1,12 +1,13 @@
+# Запуск api-service
 run-api:
-	go run ./cmd/todo_service/main.go
+	cd api-service && go run ./cmd
 
+# Запуск db-service
 run-db:
-	go run ./cmd/db_service/main.go
+	cd db-service && go run ./cmd
 
+# Запустить оба сервиса параллельно
 run-all:
-	@echo "🚀 Запуск DB сервиса..."
-	go run ./cmd/db_service/main.go &
-	@sleep 2
-	@echo "🚀 Запуск API сервиса..."
-	go run ./cmd/todo_service/main.go
+	@echo "Запуск всех сервисов..."
+	cd db-service && go run ./cmd & \
+	cd api-service && go run ./cmd
