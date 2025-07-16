@@ -61,3 +61,28 @@
   run     # Запуск проекта
   test    # Запуск тестов
   lint    # Проверка стиля кода
+
+## Структура папок
+  project-root/
+│
+├── api-service/
+│   ├── cmd/
+│   │   └── main.go
+│   ├── internal/
+│   │   ├── handler/        # HTTP-обработчики
+│   │   ├── service/        # Бизнес-логика
+│   │   └── client/         # HTTP-клиент к db-service
+│   └── Dockerfile
+│
+├── db-service/
+│   ├── cmd/
+│   │   └── main.go
+│   ├── internal/
+│   │   ├── handler/        # HTTP-обработчики
+│   │   ├── service/        # Бизнес-логика
+│   │   └── repository/     # Работа с PostgreSQL
+│   └── Dockerfile
+│
+├── docker-compose.yml
+└── Makefile
+
