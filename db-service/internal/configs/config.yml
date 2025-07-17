@@ -1,9 +1,12 @@
 # конфигурационные данные
 # go get github.com/spf13/viper
+
+
 port: "9000"
-db_user: "postgres"
-db_password: "qwerty"
-db_name: "postgres"
-db_host: "localhost"
-db_port: "5436"
-sslmode: "disable"
+db:
+  port: "5436"
+  user: "postgres"
+  name: "postgres"
+  # password: "" лежит в .env
+  host: "localhost"
+  sslmode: "disable"

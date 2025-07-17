@@ -2,16 +2,18 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq" // драйвер для pg
 	"github.com/spf13/viper"
+	"github.com/subosito/gotenv"
 	"github.com/vadimkiryanov/db-service/internal/pkg/server"
 	"github.com/vadimkiryanov/db-service/model"
 )
@@ -152,9 +154,29 @@ func main() {
 		fmt.Printf("err: %v\n", err.Error())
 	}
 
-	if err := initDb(); err != nil {
-		log.Fatal("Ошибка подключения:", err)
+	// Инициализация env
+	if err := gotenv.Load(); err != nil {
+		log.Fatalf("err %v", err.Error())
 	}
+
+	// Инициализация бд
+	db, err := sqlx.Connect("postgres", fmt.Sprintf(
+		"host=%s port=%s user=%s dbname=%s password=%s sslmode=%s",
+		viper.GetString("db.host"),
+		viper.GetString("db.port"),
+		viper.GetString("db.user"),
+		viper.GetString("db.name"),
+		os.Getenv("DB_PASSWORD"),
+		viper.GetString("db.sslmode")),
+	)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	err = db.Ping()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	fmt.Printf("\"ALL GOOD\": %v\n", "ALL GOOD")
 
 	sm := http.NewServeMux()
 	sm.HandleFunc("/api/list", handleList)
@@ -163,38 +185,8 @@ func main() {
 	err = s.Run()
 
 	if err != nil {
-		fmt.Printf("\"Ошибка запуска сервера\": %v\n", "Ошибка запуска сервера")
+		fmt.Printf("\"Ошибка запуска сервера\": %v\n", err.Error())
 	}
-}
-
-func initDb() error {
-	// Строка подключения
-	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/postgres?sslmode=%s", viper.GetString("db_user"),
-		viper.GetString("db_password"),
-		viper.GetString("db_host"),
-		viper.GetString("db_port"),
-		viper.GetString("sslmode"),
-	)
-
-	ctx := context.Background()
-
-	conn, err := pgx.Connect(ctx, connStr)
-	if err != nil {
-		log.Fatal("Ошибка подключения:", err)
-		return err
-	}
-	defer conn.Close(ctx)
-
-	var greeting string
-	err = conn.QueryRow(ctx, "SELECT 'Hello, PostgreSQL!'").Scan(&greeting)
-	if err != nil {
-		log.Fatal("Ошибка выполнения запроса:", err)
-		return err
-	}
-
-	fmt.Println(greeting)
-
-	return nil
 }
 
 func initConfig() error {
