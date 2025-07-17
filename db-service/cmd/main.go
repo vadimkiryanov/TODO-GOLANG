@@ -148,7 +148,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Произошел запрос: ", r.Method)
 }
 
-func main() {
+func init() {
 	err := initConfig()
 	if err != nil {
 		fmt.Printf("err: %v\n", err.Error())
@@ -158,31 +158,18 @@ func main() {
 	if err := gotenv.Load(); err != nil {
 		log.Fatalf("err %v", err.Error())
 	}
+}
 
-	// Инициализация бд
-	db, err := sqlx.Connect("postgres", fmt.Sprintf(
-		"host=%s port=%s user=%s dbname=%s password=%s sslmode=%s",
-		viper.GetString("db.host"),
-		viper.GetString("db.port"),
-		viper.GetString("db.user"),
-		viper.GetString("db.name"),
-		os.Getenv("DB_PASSWORD"),
-		viper.GetString("db.sslmode")),
-	)
-	if err != nil {
-		log.Fatalln(err)
+func main() {
+	if err := initBd(); err != nil {
+		log.Fatalf("Ошибка: %v", err.Error())
 	}
-	err = db.Ping()
-	if err != nil {
-		log.Fatalln(err)
-	}
-	fmt.Printf("\"ALL GOOD\": %v\n", "ALL GOOD")
 
 	sm := http.NewServeMux()
 	sm.HandleFunc("/api/list", handleList)
 
 	s := server.NewServerHTTPClient("9000", sm)
-	err = s.Run()
+	err := s.Run()
 
 	if err != nil {
 		fmt.Printf("\"Ошибка запуска сервера\": %v\n", err.Error())
@@ -194,4 +181,32 @@ func initConfig() error {
 	viper.SetConfigName("config")
 
 	return viper.ReadInConfig()
+}
+
+func initBd() error {
+	// Инициализация бд
+	db, err := sqlx.Connect("postgres", fmt.Sprintf(
+		"host=%s port=%s user=%s dbname=%s password=%s sslmode=%s",
+		viper.GetString("db.host"),
+		viper.GetString("db.port"),
+		viper.GetString("db.user"),
+		viper.GetString("db.name"),
+		os.Getenv("DB_PASSWORD"),
+		viper.GetString("db.sslmode")),
+	)
+
+	if err != nil {
+		log.Fatalf("Ошибка: %v", err.Error())
+		return err
+	}
+	err = db.Ping()
+
+	if err != nil {
+		log.Fatalf("Ошибка: %v", err.Error())
+		return err
+	}
+
+	fmt.Println("PINK")
+
+	return nil
 }
