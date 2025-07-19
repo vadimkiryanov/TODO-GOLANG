@@ -35,7 +35,7 @@ migrate-down:
 
 # Подключиться к psql в контейнере
 db-connect:
-	@read -p "Введите ID контейнера: " container_id; \
+	@read -p "Введите ID или name контейнера: " container_id; \
 	docker exec -it $$container_id psql -U postgres
 # "\dt" выведет список таблиц
 # "Ctrl+D" или "\q" выйти из psql
