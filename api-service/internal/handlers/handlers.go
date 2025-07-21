@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -47,7 +46,6 @@ func handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("list_todo: %v\n", string(body))
 	// Отправляем JSON-ответ клиенту
 	w.WriteHeader(resp.StatusCode)
 	w.Write(body)
@@ -60,7 +58,6 @@ func handleCreate(w http.ResponseWriter, req *http.Request) {
 		log.Fatalf("err: %v\n", err)
 		return
 	}
-
 	defer resp.Body.Close() // Чтобы не было утечек памяти
 
 	body, err := io.ReadAll(resp.Body)
@@ -69,7 +66,9 @@ func handleCreate(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Printf("list_todo: %v\n", string(body))
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(resp.StatusCode)
+	w.Write(body)
 }
 
 func handleDelete(w http.ResponseWriter, req *http.Request) {
@@ -88,6 +87,9 @@ func handleDelete(w http.ResponseWriter, req *http.Request) {
 	}
 
 	defer resp.Body.Close() // Чтобы не было утечек памяти
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(resp.StatusCode)
 }
 
 // curl -X PUT http://localhost:8080/done -d '{"id":"3"}'
@@ -107,5 +109,15 @@ func handleDone(w http.ResponseWriter, req *http.Request) {
 	}
 
 	defer resp.Body.Close() // Чтобы не было утечек памяти
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalf("err: %v\n", err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(resp.StatusCode)
+	w.Write(body)
 
 }

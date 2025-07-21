@@ -34,11 +34,16 @@ func handleGet(db *sqlx.DB) http.HandlerFunc {
 		todos := []model.TodoItem{}
 		err := db.Select(&todos, "SELECT * FROM todo_items")
 		if err != nil {
-			log.Fatalf("Ошибка: %v", err.Error())
+			log.Printf("Ошибка получения данных из БД: %v", err)
+			http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
+			return
 		}
 
-		fmt.Printf("todos: %v, length: %v", todos, len(todos))
+		// Отправляем ответ клинту в JSON
 		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(todos); err != nil {
+			log.Printf("Ошибка кодирования JSON: %v", err)
+		}
 	}
 }
 
@@ -68,17 +73,19 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 		tx.MustExec("INSERT INTO todo_items (id, title, done) VALUES ($1, $2, $3)", uuid.New().String(), item.Title, false)
 		tx.Commit()
 
-		// Query the database, storing results in a []Person (wrapped in []interface{})
+		// Снова получаем обновленный список
 		todos := []model.TodoItem{}
 		err = db.Select(&todos, "SELECT * FROM todo_items")
 		if err != nil {
 			log.Fatalf("Ошибка: %v", err.Error())
 		}
 
-		fmt.Printf("todos: %v", todos)
-
-		// Проксируем JSON обратно
+		// Отправляем ответ клинту в JSON
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		if err := json.NewEncoder(w).Encode(todos); err != nil {
+			log.Printf("Ошибка кодирования JSON: %v", err)
+		}
 	}
 }
 
@@ -127,7 +134,8 @@ func handleDelete(db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		w.WriteHeader(http.StatusNoContent)
+		// Отправляем ответ клинту в JSON
+		w.WriteHeader(http.StatusOK)
 	}
 
 }
@@ -177,7 +185,20 @@ func handleDone(db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		w.WriteHeader(http.StatusNoContent)
+		todos := []model.TodoItem{}
+		err = db.Select(&todos, "SELECT * FROM todo_items WHERE id = $1", item.Id)
+		if err != nil {
+			log.Printf("Ошибка получения данных из БД: %v", err)
+			http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
+			return
+		}
+
+		// Отправляем ответ клинту в JSON
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(todos); err != nil {
+			log.Printf("Ошибка кодирования JSON: %v", err)
+		}
 	}
 
 }
@@ -199,6 +220,6 @@ func handleList(db *sqlx.DB) http.HandlerFunc {
 			http.Error(w, "Метод не доступен: ", http.StatusInternalServerError)
 		}
 
-		fmt.Println("Произошел запрос: ", r.Method)
+		fmt.Println("\nПроизошел запрос: ", r.Method)
 	}
 }
