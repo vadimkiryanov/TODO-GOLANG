@@ -9,12 +9,16 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/vadimkiryanov/db-service/internal/pkg/kafka"
 	"github.com/vadimkiryanov/db-service/model"
 )
 
 type HandlersService struct {
-	handler *http.ServeMux
+	handler  *http.ServeMux
+	consumer *kafka.Consumer
 }
+
+const TOPIC = "my-topic-handlers"
 
 func NewHandlersService() *HandlersService {
 	// Создаем новый сервис

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"time"
 )
@@ -12,14 +13,19 @@ type ServerHTTP struct {
 func NewServerHTTPClient(port string, handler http.Handler) *ServerHTTP {
 	return &ServerHTTP{
 		httpServer: &http.Server{
-			Addr:         ":" + port,
-			Handler:      handler,
-			ReadTimeout:  5 * time.Second,   // max time to read request from the client
-			WriteTimeout: 10 * time.Second,  // max time to write response to the client
-			IdleTimeout:  120 * time.Second, // max time for connections using TCP
+			Addr:           ":" + port,
+			Handler:        handler,
+			MaxHeaderBytes: 1 << 20, // 1 MB
+			ReadTimeout:    10 * time.Second,
+			WriteTimeout:   10 * time.Second,
 		},
 	}
 }
+
 func (s *ServerHTTP) Run() error {
 	return s.httpServer.ListenAndServe()
+}
+
+func (s *ServerHTTP) Shutdown(ctx context.Context) error {
+	return s.httpServer.Shutdown(ctx)
 }

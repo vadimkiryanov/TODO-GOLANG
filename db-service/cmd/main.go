@@ -2,9 +2,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	_ "github.com/lib/pq" // драйвер для pg
 	"github.com/spf13/viper"
@@ -15,16 +20,18 @@ import (
 )
 
 func init() {
-	err := initConfig()
-	if err != nil {
-		fmt.Printf("err: %v\n", err.Error())
-	}
-
 	// Инициализация env
 	if err := gotenv.Load(); err != nil {
-		log.Fatalf("err %v", err.Error())
+		log.Fatalf("ошибка при инициализации env: %s", err.Error())
+	}
+
+	if err := initConfig(); err != nil {
+		log.Fatalf("ошибка при инициализации конфига: %s", err.Error())
 	}
 }
+
+var address = []string{"localhost:9091", "localhost:9092", "localhost:9093"}
+var TOPIC = "my-topic-handlers"
 
 func main() {
 	db, err := repository.NewPostgresDB(&repository.Config{
@@ -38,13 +45,30 @@ func main() {
 	if err != nil {
 		log.Fatalf("Ошибка: %v", err.Error())
 	}
+	defer db.Close()
 
 	h := handler.NewHandlersService()
-	s := server.NewServerHTTPClient("9000", h.InitRouters(db))
+	srv := server.NewServerHTTPClient("9000", h.InitRouters(db))
 
-	if err := s.Run(); err != nil {
-		fmt.Printf("\"Ошибка запуска сервера\": %v\n", err.Error())
-		return
+	go func() {
+		if err := srv.Run(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("ошибка при запуске сервера: %s", err.Error())
+		}
+	}()
+
+	fmt.Println("DB-service стартовал")
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
+	<-quit
+
+	fmt.Println("DB-service завершает работу")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("ошибка при остановке сервера: %s", err.Error())
 	}
 }
 
