@@ -63,7 +63,7 @@
   lint    # Проверка стиля кода
 
 ## Структура папок
-  project-root/
+ ```  project-root/
 │
 ├── api-service/
 │   ├── cmd/
@@ -85,4 +85,4 @@
 │
 ├── docker-compose.yml
 └── Makefile
-
+ ```
