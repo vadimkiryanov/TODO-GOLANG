@@ -12,9 +12,12 @@ import (
 	"time"
 
 	_ "github.com/lib/pq" // драйвер для pg
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/subosito/gotenv"
 	"github.com/vadimkiryanov/db-service/internal/handler"
+	"github.com/vadimkiryanov/db-service/internal/pkg/kafka"
+	hKafka "github.com/vadimkiryanov/db-service/internal/pkg/kafka/handler"
 	"github.com/vadimkiryanov/db-service/internal/pkg/server"
 	"github.com/vadimkiryanov/db-service/internal/repository"
 )
@@ -32,6 +35,7 @@ func init() {
 
 var address = []string{"localhost:9091", "localhost:9092", "localhost:9093"}
 var TOPIC = "my-topic-handlers"
+var CONSUMER_GROUP = "my-consumer-group"
 
 func main() {
 	db, err := repository.NewPostgresDB(&repository.Config{
@@ -47,8 +51,35 @@ func main() {
 	}
 	defer db.Close()
 
-	h := handler.NewHandlersService()
-	srv := server.NewServerHTTPClient("9000", h.InitRouters(db))
+	h := handler.NewHandlersService() // Хэндлер для HTTP
+	hk := hKafka.NewHandler()         // Хэндлер для Kafka
+	sm := h.InitRouters(db)           // Мультиплексер
+	srv := server.NewServerHTTPClient("9000", sm)
+
+	c1, err := kafka.NewConsumer(hk, address, TOPIC, CONSUMER_GROUP, 1)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	c2, err := kafka.NewConsumer(hk, address, TOPIC, CONSUMER_GROUP, 2)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	c3, err := kafka.NewConsumer(hk, address, TOPIC, CONSUMER_GROUP, 3)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	go func() {
+		c1.Start()
+	}()
+	go func() {
+		c2.Start()
+	}()
+	go func() {
+		c3.Start()
+	}()
 
 	go func() {
 		if err := srv.Run(); err != nil && err != http.ErrServerClosed {
@@ -61,6 +92,7 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 	<-quit
+	logrus.Fatal(c1.Stop(), c2.Stop(), c3.Stop()) // Так делать нельзя в продакшн
 
 	fmt.Println("DB-service завершает работу")
 

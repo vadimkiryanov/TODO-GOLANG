@@ -1,0 +1,10 @@
+{"consumer":1,"level":"info","msg":"Новое сообщение: Запрос: GET","offset":0,"partition":0,"time":"2025-07-28T20:45:37+02:00"}
+{"consumer":1,"level":"info","msg":"Новое сообщение: Запрос: GET","offset":1,"partition":0,"time":"2025-07-28T20:45:37+02:00"}
+{"consumer":1,"level":"info","msg":"Новое сообщение: Запрос: POST","offset":2,"partition":0,"time":"2025-07-28T20:46:41+02:00"}
+{"consumer":1,"level":"info","msg":"Новое сообщение: Запрос: PUT","offset":3,"partition":0,"time":"2025-07-28T20:47:09+02:00"}
+{"consumer":1,"level":"info","msg":"Новое сообщение: Запрос: DELETE","offset":4,"partition":0,"time":"2025-07-28T20:47:18+02:00"}
+{"consumer":1,"level":"info","msg":"Новое сообщение: Запрос: DELETE","offset":5,"partition":0,"time":"2025-07-28T20:47:21+02:00"}
+{"consumer":2,"level":"info","msg":"Новое сообщение: Запрос: DELETE","offset":6,"partition":0,"time":"2025-07-28T20:49:40+02:00"}
+{"consumer":2,"level":"info","msg":"Новое сообщение: Запрос: PUT, статус-код: 404","offset":7,"partition":0,"time":"2025-07-28T20:50:18+02:00"}
+{"consumer":1,"level":"info","msg":"Новое сообщение: Запрос: GET, статус-код: 200","offset":8,"partition":0,"time":"2025-07-28T20:54:40+02:00"}
+{"consumer":1,"level":"info","msg":"Новое сообщение: Запрос: POST, статус-код: 201","offset":9,"partition":0,"time":"2025-07-28T20:54:41+02:00"}

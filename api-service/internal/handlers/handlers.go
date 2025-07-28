@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -52,7 +53,7 @@ func (serv *HandlersService) handleGet(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	if err := serv.producer.Produce(http.MethodGet, TOPIC, "key", time.Now()); err != nil {
+	if err := serv.producer.Produce(fmt.Sprintf("Запрос: %v, статус-код: %v", http.MethodGet, resp.StatusCode), TOPIC, "key", time.Now()); err != nil {
 		log.Fatalf("Ошибка: %v", err.Error())
 	}
 
@@ -76,7 +77,7 @@ func (serv *HandlersService) handleCreate(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	if err := serv.producer.Produce(http.MethodPost, TOPIC, "key", time.Now()); err != nil {
+	if err := serv.producer.Produce(fmt.Sprintf("Запрос: %v, статус-код: %v", http.MethodPost, resp.StatusCode), TOPIC, "key", time.Now()); err != nil {
 		log.Fatalf("Ошибка: %v", err.Error())
 	}
 
@@ -102,7 +103,7 @@ func (serv *HandlersService) handleDelete(w http.ResponseWriter, req *http.Reque
 
 	defer resp.Body.Close() // Чтобы не было утечек памяти
 
-	if err := serv.producer.Produce(http.MethodDelete, TOPIC, "key", time.Now()); err != nil {
+	if err := serv.producer.Produce(fmt.Sprintf("Запрос: %v, статус-код: %v", http.MethodDelete, resp.StatusCode), TOPIC, "key", time.Now()); err != nil {
 		log.Fatalf("Ошибка: %v", err.Error())
 	}
 
@@ -134,7 +135,7 @@ func (serv *HandlersService) handleDone(w http.ResponseWriter, req *http.Request
 		return
 	}
 
-	if err := serv.producer.Produce(http.MethodPut, TOPIC, "key", time.Now()); err != nil {
+	if err := serv.producer.Produce(fmt.Sprintf("Запрос: %v, статус-код: %v", http.MethodPut, resp.StatusCode), TOPIC, "key", time.Now()); err != nil {
 		log.Fatalf("Ошибка: %v", err.Error())
 	}
 
