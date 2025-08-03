@@ -4,9 +4,15 @@
 
 port: "9000"
 db:
-  port: "5436"
-  user: "postgres"
-  name: "postgres"
-  # password: "" лежит в .env
-  host: "localhost"
-  sslmode: "disable"
+    postgres:
+      port: "5436"
+      user: "postgres"
+      name: "postgres"
+      # password: "" лежит в .env
+      host: "localhost"
+      sslmode: "disable"
+    redis:
+      addr: "localhost:6379"
+      password: "test1234"
+      user: ""
+      db: 0

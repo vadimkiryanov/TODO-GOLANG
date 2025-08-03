@@ -1,14 +1,18 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/redis/go-redis/v9"
+	"github.com/sirupsen/logrus"
 	"github.com/vadimkiryanov/db-service/internal/pkg/kafka"
 	"github.com/vadimkiryanov/db-service/model"
 )
@@ -27,21 +31,56 @@ func NewHandlersService() *HandlersService {
 	}
 }
 
-func (s *HandlersService) InitRouters(db *sqlx.DB) *http.ServeMux {
-	s.handler.HandleFunc("/api/list", handleList(db))
+func (s *HandlersService) InitRouters(db *sqlx.DB, rdb *redis.Client, ctx *context.Context) *http.ServeMux {
+	s.handler.HandleFunc("/api/list", handleList(db, rdb, *ctx))
 
 	return s.handler
 }
 
-func handleGet(db *sqlx.DB) http.HandlerFunc {
+func handleGet(db *sqlx.DB, rdb *redis.Client, ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		todos := []model.TodoItem{}
-		err := db.Select(&todos, "SELECT * FROM todo_items")
+
+		// Проверяем в редисе наличие данных
+		key := "todo_items"
+		val, err := rdb.Get(ctx, key).Result()
 		if err != nil {
-			log.Printf("Ошибка получения данных из БД: %v", err)
+			logrus.Errorf("Ошибка получения данных из redis-БД: %s", err.Error())
+		}
+
+		logrus.Infof("val: %s", val)
+		if val != "" {
+			logrus.Infof("Данные найдены в redis-БД")
+			if err := json.Unmarshal([]byte(val), &todos); err != nil {
+				logrus.Errorf("Ошибка декодирования JSON из redis: %s", err.Error())
+				http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(todos); err != nil {
+				logrus.Errorf("Ошибка кодирования JSON: %s", err.Error())
+			}
+			return
+		}
+
+		// Получение данных из постгреса
+		time.Sleep(time.Second * 5)
+		err = db.Select(&todos, "SELECT * FROM todo_items")
+		if err != nil {
+			logrus.Errorf("Ошибка получения данных из БД: %s", err.Error())
 			http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
 			return
 		}
+
+		// Сохраняем данные в редисе
+		data, err := json.Marshal(todos)
+		if err != nil {
+			logrus.Errorf("Ошибка кодирования JSON для redis: %s", err.Error())
+			http.Error(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
+			return
+		}
+		rdb.Set(ctx, key, data, 30*time.Second)
+		logrus.Infof("Данные сохранены в redis-БД")
 
 		// Отправляем ответ клинту в JSON
 		w.Header().Set("Content-Type", "application/json")
@@ -207,12 +246,12 @@ func handleDone(db *sqlx.DB) http.HandlerFunc {
 
 }
 
-func handleList(db *sqlx.DB) http.HandlerFunc {
+func handleList(db *sqlx.DB, rdb *redis.Client, ctx context.Context) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			handleGet(db)(w, r)
+			handleGet(db, rdb, ctx)(w, r)
 		case http.MethodPost:
 			handleCreate(db)(w, r)
 		case http.MethodDelete:

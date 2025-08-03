@@ -39,21 +39,36 @@ var CONSUMER_GROUP = "my-consumer-group"
 
 func main() {
 	db, err := repository.NewPostgresDB(&repository.Config{
-		Host:     viper.GetString("db.host"),
-		Port:     viper.GetString("db.port"),
-		Username: viper.GetString("db.user"),
-		DBName:   viper.GetString("db.name"),
+		Host:     viper.GetString("db.postgres.host"),
+		Port:     viper.GetString("db.postgres.port"),
+		Username: viper.GetString("db.postgres.user"),
+		DBName:   viper.GetString("db.postgres.name"),
 		Password: os.Getenv("DB_PASSWORD"),
-		SSLMode:  viper.GetString("db.sslmode"),
+		SSLMode:  viper.GetString("db.postgres.sslmode"),
 	})
 	if err != nil {
 		log.Fatalf("Ошибка: %v", err.Error())
 	}
 	defer db.Close()
 
-	h := handler.NewHandlersService() // Хэндлер для HTTP
-	hk := hKafka.NewHandler()         // Хэндлер для Kafka
-	sm := h.InitRouters(db)           // Мультиплексер
+	redisCtx := context.Background()
+	rdb, err := repository.NewRedisDB(redisCtx, repository.ConfigRedis{
+		Addr:        viper.GetString("db.redis.addr"),
+		Password:    viper.GetString("db.redis.password"),
+		User:        viper.GetString("db.redis.user"),
+		DB:          0,
+		MaxRetries:  5,
+		DialTimeout: 10 * time.Second,
+		Timeout:     5 * time.Second,
+	})
+	if err != nil {
+		logrus.Fatalf("Ошибка: %v", err.Error())
+	}
+	defer rdb.Close()
+
+	h := handler.NewHandlersService()       // Хэндлер для HTTP
+	hk := hKafka.NewHandler()               // Хэндлер для Kafka
+	sm := h.InitRouters(db, rdb, &redisCtx) // Мультиплексер
 	srv := server.NewServerHTTPClient("9000", sm)
 
 	c1, err := kafka.NewConsumer(hk, address, TOPIC, CONSUMER_GROUP, 1)
